@@ -3,7 +3,9 @@ import * as moment from 'moment';
 import { URL } from 'url';
 import { ListModel, CardModel, LabelModel, PluginDataModel, MemberModel, CheckListModel } from './types';
 import { PluginData } from './plugindata';
-import { key, token, boardId } from './trello-config';
+import { trello as trelloConfig } from './config';
+
+const { key, token, boardId } = trelloConfig;
 
 export class TrelloClient {
   private lists: ListModel[] = [];

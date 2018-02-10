@@ -15,7 +15,7 @@ export interface CustomCardModel {
   _leadtime: number | null;
   _assignMembers: boolean;
   _hasLabels: boolean;
-  _releaseStatus: string;
+  _releaseStatus: 'OK' | string;
 }
 
 export interface CardModel extends CustomCardModel {
