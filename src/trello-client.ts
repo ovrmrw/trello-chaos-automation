@@ -1,14 +1,15 @@
 import axios from 'axios';
 import * as moment from 'moment';
 import { URL } from 'url';
-import { ListModel, CardModel, LabelModel, PluginDataModel, MemberModel, CheckListModel } from './types';
+import { BoardModel, ListModel, CardModel, LabelModel, PluginDataModel, MemberModel, CheckListModel } from './types';
 import { PluginData } from './plugindata';
 import { trello as trelloConfig } from './config';
 
 const { key, token, boardId } = trelloConfig;
 
 export class TrelloClient {
-  private lists: ListModel[] = [];
+  private board: BoardModel | undefined;
+  private lists: ListModel[] | undefined;
 
   private getURL(endpoint: string): URL {
     const url = new URL(endpoint);
@@ -17,8 +18,40 @@ export class TrelloClient {
     return url;
   }
 
+  getBoard(): Promise<BoardModel> {
+    if (this.board) {
+      return Promise.resolve(this.board);
+    }
+    const endpoint = `https://api.trello.com/1/boards/${boardId}`;
+    const url = this.getURL(endpoint);
+    url.searchParams.set('lists', 'all');
+    url.searchParams.set('pluginData', 'true');
+    return axios.get(url.href)
+      .then(res => {
+        return res.data as BoardModel;
+      })
+      .then(board => {
+        return {
+          ...board,
+          pluginData: board.pluginData.map(data => {
+            try {
+              const value = JSON.parse(data.value);
+              return { ...data, value };
+            } catch (err) {
+              return data;
+            }
+          })
+        };
+      })
+      .then(board => {
+        this.board = board;
+        this.lists = board.lists.filter(list => !list.closed);
+        return board;
+      });
+  }
+
   getLists(): Promise<ListModel[]> {
-    if (this.lists.length > 0) {
+    if (this.lists) {
       return Promise.resolve(this.lists);
     }
     const endpoint = `https://api.trello.com/1/boards/${boardId}/lists`;
@@ -26,10 +59,6 @@ export class TrelloClient {
     return axios.get(url.href)
       .then(res => {
         return res.data as ListModel[];
-      })
-      .then(lists => {
-        this.lists = lists;
-        return lists;
       });
   }
 
@@ -45,7 +74,7 @@ export class TrelloClient {
         return res.data as CardModel[];
       })
       .then(cards => {
-        return this.getLists().then(() => cards);
+        return this.getBoard().then(() => cards);
       })
       .then(cards => {
         return cards.map(card => {
@@ -68,21 +97,25 @@ export class TrelloClient {
   }
 
   private complementCardInfo(card: CardModel): CardModel {
-    const _listName = this.lists.find(list => list.id === card.idList)!.name;
+    const _listName = this.lists!.find(list => list.id === card.idList)!.name;
     const inReleaseList = _listName.includes('RELEASE');
     const _assignMembers = !!card.idMembers.length;
     const _hasLabels = !!card.idLabels.length;
     const _daysFromLastActivity = moment().diff(moment(card.dateLastActivity), 'days', true);
-    const pluginData = new PluginData(card);
+    const pluginData = new PluginData(card, this.board!.pluginData);
     const _storyPoint = pluginData.getStoryPoint();
     const _leadtime = pluginData.getLeadtimeDiffAsDays();
     const releaseStatus: string[] = [];
+    const _allCheckItemsComplete = card.checklists.every(checklist => checklist.checkItems.every(item => item.state === 'complete'));
     if (inReleaseList) {
       if (!_assignMembers) {
         releaseStatus.push('Set Members');
       }
       if (!_hasLabels) {
         releaseStatus.push('Set Labels');
+      }
+      if (!_allCheckItemsComplete) {
+        releaseStatus.push('Complete CheckItems');
       }
       if (_storyPoint == null) {
         releaseStatus.push('Set SP');
@@ -97,6 +130,7 @@ export class TrelloClient {
       _assignMembers,
       _hasLabels,
       _daysFromLastActivity,
+      _allCheckItemsComplete,
       _storyPoint: pluginData.getStoryPoint(),
       _leadtime: pluginData.getLeadtimeDiffAsDays(),
       _releaseStatus: inReleaseList

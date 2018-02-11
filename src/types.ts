@@ -1,7 +1,14 @@
 export type ID = string;
 
+export interface BoardModel {
+  id: ID;
+  name: string;
+  lists: ListModel[];
+  pluginData: PluginDataModel[];
+}
+
 export interface ListModel {
-  id: string;
+  id: ID;
   name: string;
   closed: boolean;
   idBoard: string;
@@ -11,6 +18,7 @@ export interface ListModel {
 export interface CustomCardModel {
   _listName: string;
   _daysFromLastActivity: number;
+  _allCheckItemsComplete: boolean;
   _storyPoint: number | null;
   _leadtime: number | null;
   _assignMembers: boolean;

@@ -5,15 +5,17 @@ const boardId: string = trelloConfig.boardId || '';
 
 const slackConfig = require('../slack-secret.json');
 const webhookUrl: string = slackConfig.webhookUrl || '';
+const whoToMention: string[] = slackConfig.whoToMention || [];
 
-const trello = {
+const trello = Object.freeze({
   key,
   token,
-  boardId
-};
+  boardId,
+});
 
-const slack = {
+const slack = Object.freeze({
   webhookUrl,
-};
+  whoToMention,
+});
 
 export { trello, slack };

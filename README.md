@@ -20,7 +20,10 @@
 
 ```json
 {
-  "webhookUrl": "https://hooks.slack.com/services/<your setting>"
+  "webhookUrl": "https://hooks.slack.com/services/<your setting>",
+  "whoToMention": [
+    "@john", "@kate"
+  ]
 }
 ```
 
