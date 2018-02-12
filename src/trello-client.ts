@@ -3,9 +3,11 @@ import * as moment from 'moment';
 import { URL } from 'url';
 import { BoardModel, ListModel, CardModel, LabelModel, PluginDataModel, MemberModel, CheckListModel } from './types';
 import { PluginData } from './plugindata';
-import { trello as trelloConfig } from './config';
+import { trelloConfig } from './config';
 
 const { key, token, boardId } = trelloConfig;
+const FROM_EPIC_LABEL = 'from epic';
+const FROM_ISSUE_LABEL = 'from issue';
 
 export class TrelloClient {
   private board: BoardModel | undefined;
@@ -93,37 +95,21 @@ export class TrelloClient {
       })
       .then(cards => {
         return cards.map(card => this.complementCardInfo(card));
+      })
+      .then(cards => {
+        return cards.map(card => this.validateCanReleaseCard(card));
       });
   }
 
   private complementCardInfo(card: CardModel): CardModel {
     const _listName = this.lists!.find(list => list.id === card.idList)!.name;
-    const inReleaseList = _listName.includes('RELEASE');
     const _assignMembers = !!card.idMembers.length;
     const _hasLabels = !!card.idLabels.length;
     const _daysFromLastActivity = moment().diff(moment(card.dateLastActivity), 'days', true);
+    const _allCheckItemsComplete = card.checklists.every(checklist => checklist.checkItems.every(item => item.state === 'complete'));
     const pluginData = new PluginData(card, this.board!.pluginData);
     const _storyPoint = pluginData.getStoryPoint();
     const _leadtime = pluginData.getLeadtimeDiffAsDays();
-    const releaseStatus: string[] = [];
-    const _allCheckItemsComplete = card.checklists.every(checklist => checklist.checkItems.every(item => item.state === 'complete'));
-    if (inReleaseList) {
-      if (!_assignMembers) {
-        releaseStatus.push('Set Members');
-      }
-      if (!_hasLabels) {
-        releaseStatus.push('Set Labels');
-      }
-      if (!_allCheckItemsComplete) {
-        releaseStatus.push('Complete CheckItems');
-      }
-      if (_storyPoint == null) {
-        releaseStatus.push('Set SP');
-      }
-      if (_leadtime == null) {
-        releaseStatus.push('Set LT_FROM and LT_TO');
-      }
-    }
     return {
       ...card,
       _listName,
@@ -133,7 +119,46 @@ export class TrelloClient {
       _allCheckItemsComplete,
       _storyPoint: pluginData.getStoryPoint(),
       _leadtime: pluginData.getLeadtimeDiffAsDays(),
-      _releaseStatus: inReleaseList
+    };
+  }
+
+  private validateCanReleaseCard(card: CardModel): CardModel {
+    const isInReleaseList = /(RELEASE|DONE)/i.test(card._listName);
+    const hasFromEpicLabel = !!card.labels.find(label => label.name === FROM_EPIC_LABEL);
+    const isValidDescriptionEpic = !hasFromEpicLabel || (hasFromEpicLabel && /EPIC [0-9]+/.test(card.desc));
+    const hasFromIssueLabel = !!card.labels.find(label => label.name === FROM_ISSUE_LABEL);
+    const isValidDescriptionIssue = !hasFromIssueLabel || (hasFromIssueLabel && /github\.com\/.+\/issues\/[0-9]+/.test(card.desc));
+    const isValidDescriptionPR = /github\.com\/.+\/pull\/[0-9]+/.test(card.desc);
+    const releaseStatus: string[] = [];
+    if (isInReleaseList) {
+      if (!card._assignMembers) {
+        releaseStatus.push('Set Members');
+      }
+      if (!card._hasLabels) {
+        releaseStatus.push('Set Labels');
+      }
+      if (!card._allCheckItemsComplete) {
+        releaseStatus.push('Complete CheckItems');
+      }
+      if (card._storyPoint == null) {
+        releaseStatus.push('Set SP');
+      }
+      if (card._leadtime == null) {
+        releaseStatus.push('Set LT_FROM and LT_TO');
+      }
+      if (!isValidDescriptionEpic) {
+        releaseStatus.push('Write EPIC No. in description');
+      }
+      if (!isValidDescriptionIssue) {
+        releaseStatus.push('Write GitHub issue link in description');
+      }
+      if (!isValidDescriptionPR) {
+        releaseStatus.push('Write GitHub PR link in description');
+      }
+    }
+    return {
+      ...card,
+      _releaseStatus: isInReleaseList
         ? releaseStatus.length > 0
           ? 'NG: ' + releaseStatus.join(', ')
           : 'OK'
@@ -141,14 +166,16 @@ export class TrelloClient {
     };
   }
 
-  private getCardActions(cardId: string): Promise<any[]> {
-    const endpoint = `https://api.trello.com/1/cards/${cardId}/actions`;
-    const url = this.getURL(endpoint);
-    return axios.get(url.href)
-      .then(res => {
-        return res.data as PluginDataModel[];
-      });
-  }
+
+
+  // private getCardActions(cardId: string): Promise<any[]> {
+  //   const endpoint = `https://api.trello.com/1/cards/${cardId}/actions`;
+  //   const url = this.getURL(endpoint);
+  //   return axios.get(url.href)
+  //     .then(res => {
+  //       return res.data as PluginDataModel[];
+  //     });
+  // }
 
   postCardComment(cardId: string, text: string): Promise<any[]> {
     const endpoint = `https://api.trello.com/1/cards/${cardId}/actions/comments`;
@@ -159,40 +186,40 @@ export class TrelloClient {
       });
   }
 
-  getLabels(): Promise<LabelModel[]> {
-    const endpoint = `https://api.trello.com/1/boards/${boardId}/labels`;
-    const url = this.getURL(endpoint);
-    return axios.get(url.href)
-      .then(res => {
-        return res.data as LabelModel[];
-      });
-  }
+  // getLabels(): Promise<LabelModel[]> {
+  //   const endpoint = `https://api.trello.com/1/boards/${boardId}/labels`;
+  //   const url = this.getURL(endpoint);
+  //   return axios.get(url.href)
+  //     .then(res => {
+  //       return res.data as LabelModel[];
+  //     });
+  // }
 
-  getMembers(): Promise<MemberModel[]> {
-    const endpoint = `https://api.trello.com/1/boards/${boardId}/members`;
-    const url = this.getURL(endpoint);
-    return axios.get(url.href)
-      .then(res => {
-        return res.data as MemberModel[];
-      });
-  }
+  // getMembers(): Promise<MemberModel[]> {
+  //   const endpoint = `https://api.trello.com/1/boards/${boardId}/members`;
+  //   const url = this.getURL(endpoint);
+  //   return axios.get(url.href)
+  //     .then(res => {
+  //       return res.data as MemberModel[];
+  //     });
+  // }
 
-  getChecklists(): Promise<CheckListModel[]> {
-    const endpoint = `https://api.trello.com/1/boards/${boardId}/checklists`;
-    const url = this.getURL(endpoint);
-    return axios.get(url.href)
-      .then(res => {
-        // console.log(res.data);
-        return res.data as CheckListModel[];
-      });
-  }
+  // getChecklists(): Promise<CheckListModel[]> {
+  //   const endpoint = `https://api.trello.com/1/boards/${boardId}/checklists`;
+  //   const url = this.getURL(endpoint);
+  //   return axios.get(url.href)
+  //     .then(res => {
+  //       // console.log(res.data);
+  //       return res.data as CheckListModel[];
+  //     });
+  // }
 
-  getPlugins(): Promise<any[]> {
-    const endpoint = `https://api.trello.com/1/boards/${boardId}/plugins`;
-    const url = this.getURL(endpoint);
-    return axios.get(url.href)
-      .then(res => {
-        return res.data as any[];
-      });
-  }
+  // getPlugins(): Promise<any[]> {
+  //   const endpoint = `https://api.trello.com/1/boards/${boardId}/plugins`;
+  //   const url = this.getURL(endpoint);
+  //   return axios.get(url.href)
+  //     .then(res => {
+  //       return res.data as any[];
+  //     });
+  // }
 }

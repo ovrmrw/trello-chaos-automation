@@ -1,19 +1,18 @@
 import axios from 'axios';
-import { slack } from './config';
+import { slackConfig } from './config';
+
+const { webhookUrl, whoToMention } = slackConfig;
 
 export class SlackClient {
-  private readonly webhookUrl: string = slack.webhookUrl;
-  private readonly whoToMention: string[] = slack.whoToMention;
-
   constructor(private disabled: boolean = false) { }
 
   postMessage(message: string | any, title?: string): Promise<void> {
     const _title = title ? `*【${title}】*\n` : '';
     const body = typeof message === 'string'
       ? { text: _title + message }
-      : { text: _title + `\`\`\`\n${JSON.stringify(message, null, 4)}\n\`\`\`` };
+      : { text: _title + this.wrapAsCodeBlock(message) };
     return !this.disabled
-      ? axios.post(this.webhookUrl, { ...body, mrkdwn: true })
+      ? axios.post(webhookUrl, { ...body, mrkdwn: true })
         .then(res => {
           console.log('SlackClient#postMessage:', res.data);
         })
@@ -21,10 +20,17 @@ export class SlackClient {
   }
 
   postMessageWithMention(message: string | any, title?: string): Promise<void> {
-    const mention = this.whoToMention.map(who => `<${who}>`).join(' ');
+    const mention = whoToMention.map(who => `<${who}>`).join(' ');
     const _message = typeof message === 'string'
-      ? message + '\n' + mention
-      : `\`\`\`\n${JSON.stringify(message, null, 4)}\n\`\`\`` + '\n' + mention;
+      ? mention + '\n' + message
+      : mention + '\n' + this.wrapAsCodeBlock(message);
     return this.postMessage(_message, title);
+  }
+
+  private wrapAsCodeBlock(text: string): string {
+    const _text: string = typeof text === 'string'
+      ? text
+      : JSON.stringify(text, null, 4);
+    return '```\n' + `${_text}\n` + '```\n';
   }
 }

@@ -1,21 +1,25 @@
-const trelloConfig = require('../trello-secret.json');
-const key: string = trelloConfig.apiKey || '';
-const token: string = trelloConfig.token || '';
-const boardId: string = trelloConfig.boardId || '';
+import * as assert from 'assert';
 
-const slackConfig = require('../slack-secret.json');
-const webhookUrl: string = slackConfig.webhookUrl || '';
-const whoToMention: string[] = slackConfig.whoToMention || [];
+const trelloSecretJson = require('../trello-secret.json');
+const key: string = trelloSecretJson.apiKey || '';
+const token: string = trelloSecretJson.token || '';
+const boardId: string = trelloSecretJson.boardId || '';
+assert(!!key, 'key is not defined.');
+assert(!!token, 'token is not defined.');
+assert(!!boardId, 'boardId is not defined.');
 
-const trello = Object.freeze({
+const slackSecretJson = require('../slack-secret.json');
+const webhookUrl: string = slackSecretJson.webhookUrl || '';
+const whoToMention: string[] = slackSecretJson.whoToMention || [];
+assert(!!webhookUrl, 'webhookUrl is not defined.');
+
+export const trelloConfig = Object.freeze({
   key,
   token,
   boardId,
 });
 
-const slack = Object.freeze({
+export const slackConfig = Object.freeze({
   webhookUrl,
   whoToMention,
 });
-
-export { trello, slack };
