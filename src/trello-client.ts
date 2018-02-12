@@ -166,8 +166,6 @@ export class TrelloClient {
     };
   }
 
-
-
   // private getCardActions(cardId: string): Promise<any[]> {
   //   const endpoint = `https://api.trello.com/1/cards/${cardId}/actions`;
   //   const url = this.getURL(endpoint);

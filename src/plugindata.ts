@@ -3,8 +3,8 @@ import * as assert from 'assert';
 import { CardModel, PluginDataModel, ID } from './types';
 
 interface FieldModel {
-  n: ID;
-  id: string;
+  id: ID;
+  n: string;
 }
 
 const CUSTOM_FIELDS_PLUGIN_ID = '56d5e249a98895a9797bebb9';
