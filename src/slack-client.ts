@@ -20,7 +20,8 @@ export class SlackClient {
   }
 
   postMessageWithMention(message: string | any, title?: string): Promise<void> {
-    const mention = whoToMention.map(who => `<${who}>`).join(' ');
+    // const mention = whoToMention.map(who => `<${who}>`).join(' '); // Do this if you want to really send a mention.
+    const mention = whoToMention.map(who => `at ${who.replace(/^@/, '')}`).join(', ');
     const _message = typeof message === 'string'
       ? mention + '\n' + message
       : mention + '\n' + this.wrapAsCodeBlock(message);
