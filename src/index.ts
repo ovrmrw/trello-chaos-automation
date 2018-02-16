@@ -20,9 +20,7 @@ async function main() {
 
   const rottenCards = getRottenCards(cards, lists, ROTTEN_DAYS);
   console.log('ROTTEN CARDS:', tapWriteFileSync('rotten_cards.json', rottenCards));
-  rottenCards.length > 0
-    ? await slackClient.postMessageWithMention(rottenCards, '一定期間アクティビティのないカード')
-    : await slackClient.postMessage(rottenCards, '一定期間アクティビティのないカード');
+  await slackClient.postMessage(rottenCards, '一定期間アクティビティのないカード');
 
   const incompleteReleaseCards = getIncompleteReleaseCards(cards, lists);
   console.log('INCOMPLETE RELEASE CARDS:', tapWriteFileSync('incomplete_release_cards.json', incompleteReleaseCards));

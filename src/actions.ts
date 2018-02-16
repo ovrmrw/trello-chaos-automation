@@ -3,7 +3,8 @@ import { CardModel, ListModel } from './types';
 
 export function getRottenCards(cards: CardModel[], lists: ListModel[], rottenDays: number) {
   const rottenCards = cards
-    .filter(card => card._daysFromLastActivity > rottenDays && !card._listName.includes('ANALYTICS'))
+    .filter(card => card._daysFromLastActivity > rottenDays)
+    .filter(card => !/ANALYTICS/i.test(card._listName) && !/RELEASE/i.test(card._listName))
     .map(card => ({
       list: card._listName,
       card: card.name,
@@ -21,7 +22,8 @@ export function getRottenCards(cards: CardModel[], lists: ListModel[], rottenDay
 
 export function getIncompleteReleaseCards(cards: CardModel[], lists: ListModel[]) {
   const incompleteReleaseCards = cards
-    .filter(card => card._listName.includes('RELEASE') && card._releaseStatus !== 'OK')
+    .filter(card => /RELEASE/i.test(card._listName))
+    .filter(card => card._releaseStatus !== 'OK')
     .map(card => ({
       list: card._listName,
       card: card.name,
@@ -47,7 +49,7 @@ export function getReleaseCardsMetrix(cards: CardModel[], lists: ListModel[]) {
     };
   }
   const releaseCardsMetrix = cards
-    .filter(card => card._listName.includes('RELEASE'))
+    .filter(card => /RELEASE/i.test(card._listName))
     .map(card => ({
       list: card._listName,
       sp: card._storyPoint,
